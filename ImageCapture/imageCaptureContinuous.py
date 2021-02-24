@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 """
-    This sample demonstrate the continuously image capturing of the build-in Basler camera.
-    The camera python API used is called pypylon and the official package github url is https://github.com/basler/pypylon
+    This sample demonstrate the continuously image capturing of the build-in Basler and Appropho camera.
+    The basler camera python API used is called pypylon and the official package github url is https://github.com/basler/pypylon
 """
 
 import logging
@@ -15,41 +15,69 @@ logging.basicConfig(format="[ %(levelname)s ] %(message)s", level=logging.INFO, 
 log = logging.getLogger()
 
 def main():
-    title = "Image Capture continuously"
-    log.info("Starting initial camera...")
-    # --------Basler camera--------------------
-    # conecting to the first available camera
-    camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-    camera.Open()
+    log.info("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
     
-    # Grabing Continusely (video) with minimal delay
-    camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
-    converter = pylon.ImageFormatConverter()
+    # --------Basler camera--------------------    
+    try:        
+        # conecting to the first available camera
+        camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+        log.info("Starting initialize Basler camera...")
+        camera.Open()
 
-    # converting to opencv bgr format
-    converter.OutputPixelFormat = pylon.PixelType_BGR8packed
-    converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        # Grabing Continusely (video) with minimal delay
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
+        converter = pylon.ImageFormatConverter()
 
-    log.info("Starting cature image...")
-    print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
+        # converting to opencv bgr format
+        converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-    while camera.IsGrabbing():
-        grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-        if grabResult.GrabSucceeded():
-            # Access the image data
-            image = converter.Convert(grabResult)
-            frame = image.GetArray()
-            cv2.namedWindow(title, cv2.WINDOW_NORMAL)
-            cv2.imshow(title, frame)
+        log.info("Starting cature image...")        
 
-            key = cv2.waitKey(1)
+        while camera.IsGrabbing():
+            grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+            if grabResult.GrabSucceeded():
+                    # Access the image data
+                    image = converter.Convert(grabResult)
+                    frame = image.GetArray()
+                    cv2.imshow("Preview of Basler Camera --- Exit by press 'ESC' key", frame)
 
-            # ESC key
-            if key == 27:
+                    # Exit by press "ESC" key
+                    if cv2.waitKey(1) == 27:
+                            break
+    
+        cv2.destroyAllWindows()
+
+    except Exception as e:
+        # --------Appropho camera--------------------
+        log.info("Starting initialize Appropho camera...")
+        cap = cv2.VideoCapture(0)
+
+        #Check if camera was opened correctly
+        if not (cap.isOpened()):
+            log.info("Could not open Appropho camera")
+
+
+        #Set the resolution
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+
+        log.info("Starting cature image...") 
+
+        # Capture frame-by-frame
+        while(True):
+            ret, frame = cap.read()
+
+            # Display the resulting frame     
+            cv2.imshow("Preview of Appropho Camera --- Exit by press 'ESC' key",frame)                        
+
+            #Waits for a user input to quit the application
+            if cv2.waitKey(1) == 27:
                 break
-    
-    cv2.destroyAllWindows()
 
+        # When everything done, release the capture
+        cap.release()
+        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     sys.exit(main() or 0)
